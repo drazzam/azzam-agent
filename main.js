@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain } = require('electron');
 const path = require('path');
 const screenshot = require('screenshot-desktop');
 const fs = require('fs');
@@ -202,6 +202,19 @@ function createWindow() {
   
   // Initialize app with click-through mode disabled by default (fully interactive)
   toggleAppInteractivity();
+  
+  // Set up IPC handlers for UI buttons
+  ipcMain.on('toggle-interactive', toggleAppInteractivity);
+  ipcMain.on('capture-screenshot', async () => {
+    try {
+      const { base64Image, imagePath } = await captureScreenshot();
+      screenshots.push({ base64Image, imagePath });
+      await processScreenshots();
+    } catch (error) {
+      console.error("Capture screenshot error:", error);
+    }
+  });
+  ipcMain.on('reset-process', resetProcess);
 }
 
 app.whenReady().then(createWindow);
