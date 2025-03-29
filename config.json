@@ -1,4 +1,4 @@
 {
-  "apiKey": "YOUR_OPENAI_API_KEY",
-  "model": "PREFERRED_MODEL_NAME"
+  "apiKey": "YOUR_GEMINI_API_KEY",
+  "model": "gemini-1.5-pro"
 }
