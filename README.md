@@ -1,11 +1,11 @@
-# OA Coder
+# OA Coder (Gemini Version)
 
-OA Coder is an Electron application that captures screenshots and leverages the OpenAI API to analyze them. It can solve questions, generate code, or provide detailed answers based on screenshots. The app supports both single screenshot processing and multi-page mode for capturing multiple images before analysis.
+OA Coder is an Electron application that captures screenshots and leverages the Gemini API to analyze them. It can solve questions, generate code, or provide detailed answers based on screenshots. The app supports both single screenshot processing and multi-page mode for capturing multiple images before analysis.
 
 ## Features
 
 - **Screenshot Capture:** Use global keyboard shortcuts to capture the screen.
-- **OpenAI Integration:** Send captured screenshots to OpenAI's chat API for automated analysis.
+- **Gemini AI Integration:** Send captured screenshots to Google's Gemini API for automated analysis.
 - **Multi-Page Mode:** Combine multiple screenshots for questions spanning several pages.
 - **Customizable UI:** Transparent, always-on-top window with an instruction banner and markdown-rendered responses.
 - **Global Shortcuts:** Easily control the application using keyboard shortcuts.
@@ -14,14 +14,14 @@ OA Coder is an Electron application that captures screenshots and leverages the 
 
 - [Node.js](https://nodejs.org/) (v14 or later recommended)
 - [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
-- An OpenAI API key
+- A Google AI Studio API key for Gemini
 
 ## Installation
 
 1. **Clone the repository:**
 
    ```
-   git clone https://github.com/archangel0x01/oa-coder.git
+   git clone https://github.com/drazzam/oa-coder.git
    cd oa-coder
    ```
 2. **Install the dependencies:**
@@ -29,14 +29,14 @@ OA Coder is an Electron application that captures screenshots and leverages the 
    npm install
    ```
 3. **Configure the application:**
-   Create a config.json file in the project root with your OpenAI API key and (optionally) your desired model. For example:
+   Create a config.json file in the project root with your Gemini API key and (optionally) your desired model. For example:
     ```
     {
-      "apiKey": "YOUR_OPENAI_API_KEY",
-      "model": "gpt-4o-mini"
+      "apiKey": "YOUR_GEMINI_API_KEY",
+      "model": "gemini-1.5-pro"
     }
     ```
-  - Note: If the model field is omitted, the application defaults to "gpt-4o-mini".
+  - Note: If the model field is omitted, the application defaults to "gemini-1.5-pro".
 
 
 ## Usage
@@ -58,5 +58,12 @@ OA Coder is an Electron application that captures screenshots and leverages the 
 
 This program is still under development. Some features may not be fully implemented, and there might be bugs or incomplete functionality. Your feedback and contributions are welcome as we work towards a more stable release.
 
+## Getting a Gemini API Key
 
-**Personal Thoughts**: Inspired by interviewcoder.co but didn't like the idea of gatekeeping **cheating** softwares behind paywalls. Like you're literally cheating wtf man? And this might help incompetent software engineers join the company and eat it from the inside forcing companies to realise that Leetcode isn't the only way people should get hired and there are other alternative ways to assess a candidate's abilities.
+1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Create a new API key
+3. Copy the key and paste it into your config.json file
+
+## Differences from OpenAI Version
+
+This version uses Google's Gemini API instead of OpenAI's API. The functionality remains similar, but there might be slight differences in response formatting or capabilities based on the underlying model.
