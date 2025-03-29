@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>OA Coder</title>
+  <title>OA Coder - MCQ Solver</title>
   <style>
     html {
       width: 100%;
@@ -50,6 +50,7 @@
       transition: opacity 0.3s ease, visibility 0.3s;
       z-index: 9998;
       backdrop-filter: blur(3px);
+      overflow-y: auto; /* Enable scrolling inside the overlay */
     }
     
     #response-overlay.visible {
@@ -64,7 +65,7 @@
       transform: translate(-50%, -50%);
       width: 90%;
       max-width: 900px;
-      max-height: 90vh;
+      max-height: 80vh;
       overflow-y: auto;
       background: rgba(25,25,25,0.95);
       color: #fff;
@@ -88,6 +89,19 @@
     #response-box::-webkit-scrollbar-thumb {
       background: rgba(255,255,255,0.3);
       border-radius: 4px;
+    }
+    
+    /* MCQ-specific styling */
+    .mcq-highlight {
+      background-color: rgba(65, 185, 131, 0.2);
+      border-left: 4px solid #41B983;
+      padding: 10px 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    
+    strong {
+      color: #41B983;
     }
     
     pre {
@@ -125,6 +139,35 @@
       border-left: 4px solid #ff4444;
       margin: 10px 0;
     }
+    
+    /* Control buttons */
+    .control-buttons {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+      z-index: 10000;
+    }
+    
+    .control-button {
+      background: rgba(0,0,0,0.8);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      transition: background 0.2s;
+    }
+    
+    .control-button:hover {
+      background: rgba(30,30,30,0.9);
+    }
   </style>
 </head>
 <body>
@@ -132,13 +175,19 @@
   <div id="response-overlay">
     <div id="response-box"></div>
   </div>
+  
+  <div class="control-buttons">
+    <button class="control-button" id="toggle-interactive" title="Toggle Interactivity">I</button>
+    <button class="control-button" id="capture-btn" title="Capture Screenshot">S</button>
+    <button class="control-button" id="reset-btn" title="Reset">R</button>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     const { ipcRenderer } = require('electron');
     
     marked.setOptions({
-      sanitize: true,
+      sanitize: false, // Allow HTML in markdown for better formatting
       breaks: true,
       gfm: true
     });
@@ -159,11 +208,24 @@
       if (text) banner.textContent = text;
     };
     
+    // Enhanced rendering for MCQ results
+    const renderMCQResult = (result) => {
+      let html = marked.parse(result);
+      
+      // Add special styling for "Correct Answer" section
+      html = html.replace(
+        /<p><strong>Correct Answer:<\/strong>(.*?)<\/p>/g, 
+        '<div class="mcq-highlight"><p><strong>Correct Answer:</strong>$1</p></div>'
+      );
+      
+      return html;
+    };
+    
     const handlers = {
       'analysis-result': (event, result) => {
         showOverlay();
-        document.getElementById('response-box').innerHTML = marked.parse(result);
-        updateBanner("Ctrl+Shift+R: Repeat process");
+        document.getElementById('response-box').innerHTML = renderMCQResult(result);
+        updateBanner("Ctrl+Shift+R: Reset | Ctrl+Shift+I: Toggle interactivity");
       },
       
       'error': (event, error) => {
@@ -193,13 +255,38 @@
       ipcRenderer.on(channel, handler);
     });
     
+    // Set up button handlers
+    document.getElementById('toggle-interactive').addEventListener('click', () => {
+      ipcRenderer.send('toggle-interactive');
+    });
+    
+    document.getElementById('capture-btn').addEventListener('click', () => {
+      ipcRenderer.send('capture-screenshot');
+    });
+    
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      ipcRenderer.send('reset-process');
+    });
+    
+    // Make overlay clickable without closing
+    document.getElementById('response-overlay').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('response-overlay')) {
+        hideOverlay();
+      }
+    });
+    
     window.addEventListener('unload', () => {
       Object.keys(handlers).forEach(channel => {
         ipcRenderer.removeAllListeners(channel);
       });
     });
     
-    updateBanner("Ctrl+Shift+S: Screenshot | Ctrl+Shift+A: Multi-mode | Ctrl+Shift+Q: Close");
+    // Enable mouse wheel events to scroll within response box
+    document.getElementById('response-box').addEventListener('wheel', (e) => {
+      e.stopPropagation();
+    });
+    
+    updateBanner("Ctrl+Shift+S: Screenshot | Ctrl+Shift+A: Multi-mode | Ctrl+Shift+I: Toggle interactivity");
   </script>
 </body>
 </html>
