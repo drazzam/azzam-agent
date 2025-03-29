@@ -2,7 +2,7 @@ const { app, BrowserWindow, globalShortcut } = require('electron');
 const path = require('path');
 const screenshot = require('screenshot-desktop');
 const fs = require('fs');
-const { OpenAI } = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 let config;
 try {
@@ -16,14 +16,16 @@ try {
   
   // Set default model if not specified
   if (!config.model) {
-    config.model = "gpt-4o-mini";
+    config.model = "gemini-1.5-pro";
     console.log("Model not specified in config, using default:", config.model);
   }
 } catch (err) {
   console.error("Error reading config:", err);
   app.quit();
 }
-const openai = new OpenAI({ apiKey: config.apiKey });
+
+// Initialize the Gemini API client
+const genAI = new GoogleGenerativeAI(config.apiKey);
 
 let mainWindow;
 let screenshots = [];
@@ -55,7 +57,7 @@ async function captureScreenshot() {
     const base64Image = imageBuffer.toString('base64');
 
     mainWindow.show();
-    return base64Image;
+    return { base64Image, imagePath };
   } catch (err) {
     mainWindow.show();
     if (mainWindow.webContents) {
@@ -67,26 +69,34 @@ async function captureScreenshot() {
 
 async function processScreenshots() {
   try {
-    // Build message with text + each screenshot
-    const messages = [
-      { type: "text", text: "Can you solve the question for me and give the final answer/code?" }
-    ];
-    for (const img of screenshots) {
-      messages.push({
-        type: "image_url",
-        image_url: { url: `data:image/png;base64,${img}` }
+    // Get the Gemini model
+    const model = genAI.getGenerativeModel({ model: config.model });
+    
+    // Create a new chat session
+    const chat = model.startChat();
+    
+    // Prepare the prompt with text and images
+    const prompt = "Can you solve the question for me and give the final answer/code?";
+    
+    // Create the content parts array with the initial text
+    const parts = [{ text: prompt }];
+    
+    // Add all screenshots as inline images
+    for (const screenshot of screenshots) {
+      parts.push({
+        inlineData: {
+          data: screenshot.base64Image,
+          mimeType: "image/png"
+        }
       });
     }
-
-    // Make the request
-    const response = await openai.chat.completions.create({
-      model: config.model,
-      messages: [{ role: "user", content: messages }],
-      max_tokens: 5000
-    });
-
+    
+    // Send the request to Gemini
+    const result = await chat.sendMessage(parts);
+    const response = await result.response;
+    
     // Send the text to the renderer
-    mainWindow.webContents.send('analysis-result', response.choices[0].message.content);
+    mainWindow.webContents.send('analysis-result', response.text());
   } catch (err) {
     console.error("Error in processScreenshots:", err);
     if (mainWindow.webContents) {
@@ -127,8 +137,8 @@ function createWindow() {
   // Ctrl+Shift+S => single or final screenshot
   globalShortcut.register('CommandOrControl+Shift+S', async () => {
     try {
-      const img = await captureScreenshot();
-      screenshots.push(img);
+      const { base64Image, imagePath } = await captureScreenshot();
+      screenshots.push({ base64Image, imagePath });
       await processScreenshots();
     } catch (error) {
       console.error("Ctrl+Shift+S error:", error);
@@ -142,8 +152,8 @@ function createWindow() {
         multiPageMode = true;
         updateInstruction("Multi-mode: Ctrl+Shift+A to add, Ctrl+Shift+S to finalize");
       }
-      const img = await captureScreenshot();
-      screenshots.push(img);
+      const { base64Image, imagePath } = await captureScreenshot();
+      screenshots.push({ base64Image, imagePath });
       updateInstruction("Multi-mode: Ctrl+Shift+A to add, Ctrl+Shift+S to finalize");
     } catch (error) {
       console.error("Ctrl+Shift+A error:", error);
@@ -156,11 +166,10 @@ function createWindow() {
   });
      
   // Ctrl+Shift+Q => Quit the application
-globalShortcut.register('CommandOrControl+Shift+Q', () => {
-  console.log("Quitting application...");
-  app.quit();
-  
-});
+  globalShortcut.register('CommandOrControl+Shift+Q', () => {
+    console.log("Quitting application...");
+    app.quit();
+  });
 }
 
 app.whenReady().then(createWindow);
