@@ -30,6 +30,7 @@ const genAI = new GoogleGenerativeAI(config.apiKey);
 let mainWindow;
 let screenshots = [];
 let multiPageMode = false;
+let appIsActive = true; // Flag to track if app is actively intercepting input
 
 function updateInstruction(instruction) {
   if (mainWindow?.webContents) {
@@ -75,8 +76,18 @@ async function processScreenshots() {
     // Create a new chat session
     const chat = model.startChat();
     
-    // Prepare the prompt with text and images
-    const prompt = "Can you solve the question for me and give the final answer/code?";
+    // Prepare the prompt with text and images specifically for MCQ questions
+    const prompt = `
+    This is a multiple-choice question. Please:
+    1. Identify the question being asked
+    2. Analyze all available options
+    3. Select the correct answer with high confidence
+    4. Explain why this is the correct answer
+    5. Format your response as:
+       **Question:** [the question]
+       **Correct Answer:** [option letter/number] - [the answer text]
+       **Explanation:** [your explanation]
+    `;
     
     // Create the content parts array with the initial text
     const parts = [{ text: prompt }];
@@ -111,6 +122,19 @@ function resetProcess() {
   multiPageMode = false;
   mainWindow.webContents.send('clear-result');
   updateInstruction("Ctrl+Shift+S: Screenshot | Ctrl+Shift+A: Multi-mode");
+}
+
+function toggleAppInteractivity() {
+  appIsActive = !appIsActive;
+  if (appIsActive) {
+    // Make app interactive
+    mainWindow.setIgnoreMouseEvents(false);
+    updateInstruction("App active: Ctrl+Shift+S: Screenshot | Ctrl+Shift+A: Multi-mode | Ctrl+Shift+I: Toggle interactivity");
+  } else {
+    // Make app pass-through (ignore mouse events)
+    mainWindow.setIgnoreMouseEvents(true, { forward: true });
+    updateInstruction("App inactive (click-through mode) | Ctrl+Shift+I: Toggle interactivity");
+  }
 }
 
 function createWindow() {
@@ -170,6 +194,14 @@ function createWindow() {
     console.log("Quitting application...");
     app.quit();
   });
+  
+  // Ctrl+Shift+I => Toggle interactivity (click-through mode)
+  globalShortcut.register('CommandOrControl+Shift+I', () => {
+    toggleAppInteractivity();
+  });
+  
+  // Initialize app with click-through mode disabled by default (fully interactive)
+  toggleAppInteractivity();
 }
 
 app.whenReady().then(createWindow);
