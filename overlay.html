@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Helper</title>
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      overflow: hidden;
+    }
+    
+    #stealth-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="stealth-canvas"></canvas>
+  
+  <script>
+    const { ipcRenderer } = require('electron');
+    
+    // This window is used for special rendering techniques
+    // that can help bypass screen recording software
+    
+    const canvas = document.getElementById('stealth-canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Set up the canvas to match window size
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    
+    // Handle messages from main process
+    ipcRenderer.on('render-content', (event, data) => {
+      // This could be used to render content in a way that might
+      // bypass screen recording
+      if (data && data.type === 'text') {
+        renderText(data.text, data.x, data.y);
+      }
+    });
+    
+    function renderText(text, x, y) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.font = '16px Arial';
+      ctx.fillStyle = 'white';
+      ctx.fillText(text, x || 10, y || 20);
+    }
+    
+    // This overlay window can be used for techniques that might help
+    // bypass screen recording in certain situations
+  </script>
+</body>
+</html>
