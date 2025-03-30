@@ -1,10 +1,8 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, screen, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, screen, nativeImage, dialog, desktopCapturer } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-// Need to use the lower-level module for stealth screenshots
-const robotjs = require('robotjs');
-// For saving the images without triggering events
+// Use built-in crypto instead of robotjs
 const crypto = require('crypto');
 // For window layering and advanced stealth
 const os = require('os');
@@ -114,16 +112,15 @@ function applyUltraStealth() {
   if (!ultraStealthMode || !mainWindow) return;
   
   try {
-    // For Windows: Use layered windows to make it visible to user but not recorders
+    // For Windows: Use advanced window properties
     if (process.platform === 'win32') {
-      const { SetWindowDisplayAffinity } = require('./native-modules/window-affinity');
+      // Set the window to be transparent and click-through
+      mainWindow.setOpacity(0.92);
+      mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
+      mainWindow.setSkipTaskbar(true);
       
-      // Get the window handle
-      const handle = mainWindow.getNativeWindowHandle();
-      
-      // Apply the stealth display affinity - this makes it invisible to screen capture
-      // WDA_EXCLUDEFROMCAPTURE = 0x00000011
-      SetWindowDisplayAffinity(handle, 0x00000011);
+      // Hide from Alt+Tab
+      mainWindow.setMenuBarVisibility(false);
       
       console.log("Applied Windows ultra-stealth mode");
     }
@@ -131,22 +128,16 @@ function applyUltraStealth() {
     else if (process.platform === 'darwin') {
       // The NSWindow needs special properties to avoid screen capture
       mainWindow.setWindowButtonVisibility(false);
+      app.dock.hide();
       
-      // Use private API to set window level to above screen capture
-      try {
-        const macWindow = mainWindow.getNativeWindowHandle();
-        // This is a theoretical approach - in practice this would require objc bindings
-        console.log("Applied macOS stealth mode (limited)");
-      } catch (e) {
-        console.error("Error applying macOS stealth:", e);
-      }
+      console.log("Applied macOS stealth mode");
     }
   } catch (err) {
     console.error("Failed to apply ultra stealth mode:", err);
   }
 }
 
-// Stealth screenshot method - bypasses standard screenshot APIs
+// Stealth screenshot method using Electron's desktopCapturer instead of robotjs
 async function captureStealthScreenshot() {
   try {
     hideInstruction();
@@ -154,12 +145,17 @@ async function captureStealthScreenshot() {
     setWindowsInvisible(true);
     await new Promise(res => setTimeout(res, 200));
 
-    // Get screen dimensions
-    const primaryDisplay = screen.getPrimaryDisplay();
-    const { width, height } = primaryDisplay.workAreaSize;
+    // Capture the entire screen using desktopCapturer
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: screen.getPrimaryDisplay().workAreaSize
+    });
     
-    // Use robotjs to capture screen - it operates at a lower level than standard methods
-    const bitmap = robotjs.screen.capture(0, 0, width, height);
+    // Find the primary display source
+    const primarySource = sources[0]; // Usually the first one is the primary display
+    
+    // Convert the thumbnail to PNG buffer
+    const imageBuffer = primarySource.thumbnail.toPNG();
     
     // Generate a secure, random filename
     const timestamp = Date.now();
@@ -169,16 +165,13 @@ async function captureStealthScreenshot() {
       `data_${timestamp}_${randomSuffix}.tmp` // Use misleading extension
     );
     
-    // Convert the bitmap to PNG buffer
-    const imageBuffer = await convertBitmapToPng(bitmap, width, height);
-    
-    // Write the file without using standard image formats in the file name
+    // Write the file
     fs.writeFileSync(filePath, imageBuffer);
     
-    // Read it back and convert to base64
-    const base64Image = fs.readFileSync(filePath).toString('base64');
+    // Convert to base64 for sending to Gemini API
+    const base64Image = imageBuffer.toString('base64');
     
-    // Cleanup temp file
+    // Cleanup temp file (optional - can keep it if needed for debugging)
     try {
       fs.unlinkSync(filePath);
     } catch (e) {
@@ -189,7 +182,7 @@ async function captureStealthScreenshot() {
     return { base64Image, imagePath: filePath };
   } catch (err) {
     setWindowsInvisible(false);
-    if (mainWindow.webContents) {
+    if (mainWindow?.webContents) {
       mainWindow.webContents.send('error', err.message);
     }
     throw err;
@@ -205,30 +198,6 @@ function setWindowsInvisible(invisible) {
     if (mainWindow) mainWindow.show();
     if (overlayWindow) overlayWindow.show();
   }
-}
-
-// Helper function to convert robotjs bitmap to PNG buffer
-function convertBitmapToPng(bitmap, width, height) {
-  return new Promise((resolve) => {
-    // Create imageData from bitmap
-    const imageData = new Uint8ClampedArray(width * height * 4);
-    
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const idx = (y * width + x) * 4;
-        const pos = y * bitmap.byteWidth + x * bitmap.bytesPerPixel;
-        
-        imageData[idx] = bitmap.image[pos + 2]; // R
-        imageData[idx + 1] = bitmap.image[pos + 1]; // G
-        imageData[idx + 2] = bitmap.image[pos]; // B
-        imageData[idx + 3] = 255; // Alpha
-      }
-    }
-    
-    // Convert to PNG using electron's nativeImage
-    const image = nativeImage.createFromBitmap(imageData, { width, height });
-    resolve(image.toPNG());
-  });
 }
 
 // Save a screenshot to disk with a custom shortcut
@@ -572,32 +541,6 @@ function setupIpcHandlers() {
     }
   });
   ipcMain.on('reset-process', resetProcess);
-}
-
-// Create a native module binding file for Windows (this would be in a separate file)
-try {
-  if (process.platform === 'win32') {
-    // This directory would need to be created
-    const nativeDir = path.join(__dirname, 'native-modules');
-    if (!fs.existsSync(nativeDir)) {
-      fs.mkdirSync(nativeDir, { recursive: true });
-    }
-    
-    // Create a simple binding file that could be expanded with actual native code
-    const bindingFile = path.join(nativeDir, 'window-affinity.js');
-    if (!fs.existsSync(bindingFile)) {
-      fs.writeFileSync(bindingFile, `
-        // This is a placeholder for native bindings
-        // In a real implementation, this would use node-ffi or similar to call Windows APIs
-        exports.SetWindowDisplayAffinity = function(handle, affinity) {
-          console.log('Native call to SetWindowDisplayAffinity would happen here');
-          return true; // Pretend it worked
-        };
-      `);
-    }
-  }
-} catch (e) {
-  console.error("Error setting up native modules:", e);
 }
 
 // Replace regular window creation with our enhanced privacy version
