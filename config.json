@@ -5,6 +5,7 @@
     "ultraStealthMode": true,
     "privacyMode": true,
     "preventKeyLogging": true,
-    "hideFromScreenCapture": true
+    "hideFromScreenCapture": true,
+    "alternativeScreenCapture": true
   }
 }
