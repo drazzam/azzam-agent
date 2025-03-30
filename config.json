@@ -1,4 +1,10 @@
 {
   "apiKey": "YOUR_GEMINI_API_KEY",
-  "model": "gemini-1.5-pro"
+  "model": "gemini-1.5-pro",
+  "security": {
+    "ultraStealthMode": true,
+    "privacyMode": true,
+    "preventKeyLogging": true,
+    "hideFromScreenCapture": true
+  }
 }
