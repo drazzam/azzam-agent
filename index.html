@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>OA Coder - MCQ Solver</title>
+  <title>Data Viewer</title>
   <style>
     html {
       width: 100%;
@@ -151,7 +151,7 @@
     }
     
     .control-button {
-      background: rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.7);
       color: white;
       border: none;
       border-radius: 50%;
@@ -162,11 +162,38 @@
       justify-content: center;
       cursor: pointer;
       box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-      transition: background 0.2s;
+      transition: all 0.2s;
+      opacity: 0.7;
+      font-size: 16px;
     }
     
     .control-button:hover {
       background: rgba(30,30,30,0.9);
+      opacity: 0.9;
+    }
+    
+    /* Notification */
+    #notification {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 10px 15px;
+      border-radius: 4px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 10001;
+    }
+    
+    #notification.visible {
+      opacity: 1;
+    }
+    
+    /* Privacy mode indicator */
+    .privacy-active {
+      outline: 2px solid rgba(65, 185, 131, 0.5);
+      background: rgba(0,0,0,0.8) !important;
     }
   </style>
 </head>
@@ -176,9 +203,13 @@
     <div id="response-box"></div>
   </div>
   
+  <div id="notification"></div>
+  
   <div class="control-buttons">
+    <button class="control-button" id="toggle-privacy" title="Toggle Privacy Mode">P</button>
     <button class="control-button" id="toggle-interactive" title="Toggle Interactivity">I</button>
     <button class="control-button" id="capture-btn" title="Capture Screenshot">S</button>
+    <button class="control-button" id="save-btn" title="Save Screenshot">D</button>
     <button class="control-button" id="reset-btn" title="Reset">R</button>
   </div>
 
@@ -206,6 +237,27 @@
       const banner = document.getElementById('instruction-banner');
       banner.style.opacity = show ? '1' : '0';
       if (text) banner.textContent = text;
+      
+      // Check if privacy mode is mentioned in the text
+      if (text && text.includes('Privacy Mode: ON')) {
+        document.querySelectorAll('.control-button').forEach(button => {
+          button.classList.add('privacy-active');
+        });
+      } else {
+        document.querySelectorAll('.control-button').forEach(button => {
+          button.classList.remove('privacy-active');
+        });
+      }
+    };
+    
+    const showNotification = (message) => {
+      const notification = document.getElementById('notification');
+      notification.textContent = message;
+      notification.classList.add('visible');
+      
+      setTimeout(() => {
+        notification.classList.remove('visible');
+      }, 3000);
     };
     
     // Enhanced rendering for MCQ results
@@ -225,7 +277,7 @@
       'analysis-result': (event, result) => {
         showOverlay();
         document.getElementById('response-box').innerHTML = renderMCQResult(result);
-        updateBanner("Ctrl+Shift+R: Reset | Ctrl+Shift+I: Toggle interactivity");
+        updateBanner("Ctrl+Shift+R: Reset | Ctrl+Shift+I: Toggle interactivity | Ctrl+Shift+P: Privacy mode");
       },
       
       'error': (event, error) => {
@@ -248,6 +300,10 @@
       'clear-result': () => {
         document.getElementById('response-box').innerHTML = "";
         hideOverlay();
+      },
+      
+      'show-notification': (event, message) => {
+        showNotification(message);
       }
     };
     
@@ -260,8 +316,16 @@
       ipcRenderer.send('toggle-interactive');
     });
     
+    document.getElementById('toggle-privacy').addEventListener('click', () => {
+      ipcRenderer.send('toggle-privacy');
+    });
+    
     document.getElementById('capture-btn').addEventListener('click', () => {
       ipcRenderer.send('capture-screenshot');
+    });
+    
+    document.getElementById('save-btn').addEventListener('click', () => {
+      ipcRenderer.send('save-screenshot');
     });
     
     document.getElementById('reset-btn').addEventListener('click', () => {
@@ -275,6 +339,20 @@
       }
     });
     
+    // Enhanced keyboard handling - prevent events from being captured
+    document.addEventListener('keydown', (e) => {
+      // Check for our global shortcut combinations
+      if (e.ctrlKey && e.shiftKey) {
+        const key = e.key.toLowerCase();
+        if (['s', 'a', 'r', 'q', 'i', 'p', 'd'].includes(key)) {
+          // Stop propagation and prevent default
+          e.stopPropagation();
+          e.preventDefault();
+          return false;
+        }
+      }
+    }, true);
+    
     window.addEventListener('unload', () => {
       Object.keys(handlers).forEach(channel => {
         ipcRenderer.removeAllListeners(channel);
@@ -286,7 +364,8 @@
       e.stopPropagation();
     });
     
-    updateBanner("Ctrl+Shift+S: Screenshot | Ctrl+Shift+A: Multi-mode | Ctrl+Shift+I: Toggle interactivity");
+    // Initialize with privacy mode message
+    updateBanner("Ctrl+Shift+S: Screenshot | Ctrl+Shift+P: Privacy mode | Ctrl+Shift+I: Toggle interactivity | Ctrl+Shift+D: Save to disk");
   </script>
 </body>
 </html>
