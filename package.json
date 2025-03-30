@@ -1,5 +1,5 @@
 {
-  "name": "oa-coder",
+  "name": "azzam-agent",
   "version": "1.0.0",
   "main": "main.js",
   "scripts": {
@@ -10,7 +10,8 @@
     "electron": "^28.1.0",
     "@google/generative-ai": "^0.2.1",
     "screenshot-desktop": "^1.15.0",
-    "robotjs": "^0.6.0"
+    "robotjs": "^0.6.0",
+    "node-gyp": "^9.4.0"
   },
   "devDependencies": {
     "electron-rebuild": "^3.2.9"
