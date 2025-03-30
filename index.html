@@ -2,370 +2,66 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>Data Viewer</title>
+  <title>Helper</title>
   <style>
-    html {
+    html, body {
       width: 100%;
       height: 100%;
-      background: none;
-    }
-    
-    body {
-      margin: 0; 
+      margin: 0;
       padding: 0;
-      width: 100%;
-      height: 100%;
-      background: none;
-      font-family: Arial, sans-serif;
+      background: transparent;
       overflow: hidden;
-      position: relative;
     }
     
-    /* Improved instruction banner */
-    #instruction-banner {
-      position: fixed;
+    #stealth-canvas {
+      position: absolute;
       top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.85);
-      color: #fff;
-      padding: 8px 15px;
-      font-size: 14px;
-      border-radius: 0 0 8px 8px;
-      z-index: 9999;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      transition: opacity 0.3s ease;
-      user-select: none;
-    }
-    
-    #response-overlay {
-      position: fixed;
-      top: 0; 
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0,0,0,0.85);
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.3s ease, visibility 0.3s;
-      z-index: 9998;
-      backdrop-filter: blur(3px);
-      overflow-y: auto; /* Enable scrolling inside the overlay */
-    }
-    
-    #response-overlay.visible {
-      opacity: 1;
-      visibility: visible;
-    }
-    
-    #response-box {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 90%;
-      max-width: 900px;
-      max-height: 80vh;
-      overflow-y: auto;
-      background: rgba(25,25,25,0.95);
-      color: #fff;
-      padding: 25px;
-      box-sizing: border-box;
-      font-size: 15px;
-      line-height: 1.5;
-      border-radius: 8px;
-      box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-    }
-    
-    #response-box::-webkit-scrollbar {
-      width: 8px;
-    }
-    
-    #response-box::-webkit-scrollbar-track {
-      background: rgba(0,0,0,0.1);
-      border-radius: 4px;
-    }
-    
-    #response-box::-webkit-scrollbar-thumb {
-      background: rgba(255,255,255,0.3);
-      border-radius: 4px;
-    }
-    
-    /* MCQ-specific styling */
-    .mcq-highlight {
-      background-color: rgba(65, 185, 131, 0.2);
-      border-left: 4px solid #41B983;
-      padding: 10px 15px;
-      margin: 15px 0;
-      border-radius: 4px;
-    }
-    
-    strong {
-      color: #41B983;
-    }
-    
-    pre {
-      background: rgba(40,40,40,0.95);
-      color: #f0f0f0;
-      padding: 15px;
-      border-radius: 6px;
-      white-space: pre;
-      overflow-x: auto;
-      margin: 1em 0;
-      border: 1px solid rgba(255,255,255,0.1);
-    }
-    
-    code {
-      font-family: 'Fira Code', Consolas, 'Courier New', monospace;
-      background: rgba(60,60,60,0.95);
-      color: #fff;
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
-    
-    #response-box p {
-      margin: 0 0 10px 0;
-    }
-    
-    #response-box p:last-child {
-      margin-bottom: 0;
-    }
-    
-    .error-message {
-      color: #ff4444;
-      background: rgba(255,68,68,0.1);
-      padding: 15px;
-      border-radius: 6px;
-      border-left: 4px solid #ff4444;
-      margin: 10px 0;
-    }
-    
-    /* Control buttons */
-    .control-buttons {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      display: flex;
-      gap: 10px;
-      z-index: 10000;
-    }
-    
-    .control-button {
-      background: rgba(0,0,0,0.7);
-      color: white;
-      border: none;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-      transition: all 0.2s;
-      opacity: 0.7;
-      font-size: 16px;
-    }
-    
-    .control-button:hover {
-      background: rgba(30,30,30,0.9);
-      opacity: 0.9;
-    }
-    
-    /* Notification */
-    #notification {
-      position: fixed;
-      bottom: 20px;
-      left: 20px;
-      background: rgba(0,0,0,0.85);
-      color: #fff;
-      padding: 10px 15px;
-      border-radius: 4px;
-      opacity: 0;
-      transition: opacity 0.3s;
-      z-index: 10001;
-    }
-    
-    #notification.visible {
-      opacity: 1;
-    }
-    
-    /* Privacy mode indicator */
-    .privacy-active {
-      outline: 2px solid rgba(65, 185, 131, 0.5);
-      background: rgba(0,0,0,0.8) !important;
+      pointer-events: none;
     }
   </style>
 </head>
 <body>
-  <div id="instruction-banner"></div>
-  <div id="response-overlay">
-    <div id="response-box"></div>
-  </div>
+  <canvas id="stealth-canvas"></canvas>
   
-  <div id="notification"></div>
-  
-  <div class="control-buttons">
-    <button class="control-button" id="toggle-privacy" title="Toggle Privacy Mode">P</button>
-    <button class="control-button" id="toggle-interactive" title="Toggle Interactivity">I</button>
-    <button class="control-button" id="capture-btn" title="Capture Screenshot">S</button>
-    <button class="control-button" id="save-btn" title="Save Screenshot">D</button>
-    <button class="control-button" id="reset-btn" title="Reset">R</button>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     const { ipcRenderer } = require('electron');
     
-    marked.setOptions({
-      sanitize: false, // Allow HTML in markdown for better formatting
-      breaks: true,
-      gfm: true
-    });
+    // This window is used for special rendering techniques
+    // that can help bypass screen recording software
     
-    const showOverlay = () => {
-      const overlay = document.getElementById('response-overlay');
-      overlay.classList.add('visible');
-    };
+    const canvas = document.getElementById('stealth-canvas');
+    const ctx = canvas.getContext('2d');
     
-    const hideOverlay = () => {
-      const overlay = document.getElementById('response-overlay');
-      overlay.classList.remove('visible');
-    };
+    // Set up the canvas to match window size
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
     
-    const updateBanner = (text, show = true) => {
-      const banner = document.getElementById('instruction-banner');
-      banner.style.opacity = show ? '1' : '0';
-      if (text) banner.textContent = text;
-      
-      // Check if privacy mode is mentioned in the text
-      if (text && text.includes('Privacy Mode: ON')) {
-        document.querySelectorAll('.control-button').forEach(button => {
-          button.classList.add('privacy-active');
-        });
-      } else {
-        document.querySelectorAll('.control-button').forEach(button => {
-          button.classList.remove('privacy-active');
-        });
-      }
-    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
     
-    const showNotification = (message) => {
-      const notification = document.getElementById('notification');
-      notification.textContent = message;
-      notification.classList.add('visible');
-      
-      setTimeout(() => {
-        notification.classList.remove('visible');
-      }, 3000);
-    };
-    
-    // Enhanced rendering for MCQ results
-    const renderMCQResult = (result) => {
-      let html = marked.parse(result);
-      
-      // Add special styling for "Correct Answer" section
-      html = html.replace(
-        /<p><strong>Correct Answer:<\/strong>(.*?)<\/p>/g, 
-        '<div class="mcq-highlight"><p><strong>Correct Answer:</strong>$1</p></div>'
-      );
-      
-      return html;
-    };
-    
-    const handlers = {
-      'analysis-result': (event, result) => {
-        showOverlay();
-        document.getElementById('response-box').innerHTML = renderMCQResult(result);
-        updateBanner("Ctrl+Shift+R: Reset | Ctrl+Shift+I: Toggle interactivity | Ctrl+Shift+P: Privacy mode");
-      },
-      
-      'error': (event, error) => {
-        showOverlay();
-        document.getElementById('response-box').innerHTML = 
-          `<div class="error-message">
-            <strong>Error:</strong> ${error}
-            <br><small>Press Ctrl+Shift+R to try again</small>
-          </div>`;
-      },
-      
-      'update-instruction': (event, instruction) => {
-        updateBanner(instruction, true);
-      },
-      
-      'hide-instruction': () => {
-        updateBanner('', false);
-      },
-      
-      'clear-result': () => {
-        document.getElementById('response-box').innerHTML = "";
-        hideOverlay();
-      },
-      
-      'show-notification': (event, message) => {
-        showNotification(message);
-      }
-    };
-    
-    Object.entries(handlers).forEach(([channel, handler]) => {
-      ipcRenderer.on(channel, handler);
-    });
-    
-    // Set up button handlers
-    document.getElementById('toggle-interactive').addEventListener('click', () => {
-      ipcRenderer.send('toggle-interactive');
-    });
-    
-    document.getElementById('toggle-privacy').addEventListener('click', () => {
-      ipcRenderer.send('toggle-privacy');
-    });
-    
-    document.getElementById('capture-btn').addEventListener('click', () => {
-      ipcRenderer.send('capture-screenshot');
-    });
-    
-    document.getElementById('save-btn').addEventListener('click', () => {
-      ipcRenderer.send('save-screenshot');
-    });
-    
-    document.getElementById('reset-btn').addEventListener('click', () => {
-      ipcRenderer.send('reset-process');
-    });
-    
-    // Make overlay clickable without closing
-    document.getElementById('response-overlay').addEventListener('click', (e) => {
-      if (e.target === document.getElementById('response-overlay')) {
-        hideOverlay();
+    // Handle messages from main process
+    ipcRenderer.on('render-content', (event, data) => {
+      // This could be used to render content in a way that might
+      // bypass screen recording
+      if (data && data.type === 'text') {
+        renderText(data.text, data.x, data.y);
       }
     });
     
-    // Enhanced keyboard handling - prevent events from being captured
-    document.addEventListener('keydown', (e) => {
-      // Check for our global shortcut combinations
-      if (e.ctrlKey && e.shiftKey) {
-        const key = e.key.toLowerCase();
-        if (['s', 'a', 'r', 'q', 'i', 'p', 'd'].includes(key)) {
-          // Stop propagation and prevent default
-          e.stopPropagation();
-          e.preventDefault();
-          return false;
-        }
-      }
-    }, true);
+    function renderText(text, x, y) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.font = '16px Arial';
+      ctx.fillStyle = 'white';
+      ctx.fillText(text, x || 10, y || 20);
+    }
     
-    window.addEventListener('unload', () => {
-      Object.keys(handlers).forEach(channel => {
-        ipcRenderer.removeAllListeners(channel);
-      });
-    });
-    
-    // Enable mouse wheel events to scroll within response box
-    document.getElementById('response-box').addEventListener('wheel', (e) => {
-      e.stopPropagation();
-    });
-    
-    // Initialize with privacy mode message
-    updateBanner("Ctrl+Shift+S: Screenshot | Ctrl+Shift+P: Privacy mode | Ctrl+Shift+I: Toggle interactivity | Ctrl+Shift+D: Save to disk");
+    // This overlay window can be used for techniques that might help
+    // bypass screen recording in certain situations
   </script>
 </body>
 </html>
