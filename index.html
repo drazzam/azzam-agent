@@ -71,7 +71,7 @@
       color: #fff;
       padding: 25px;
       box-sizing: border-box;
-      font-size: 15px;
+      font-size: 18px; /* Increased font size for better readability */
       line-height: 1.5;
       border-radius: 8px;
       box-shadow: 0 5px 20px rgba(0,0,0,0.3);
@@ -91,13 +91,34 @@
       border-radius: 4px;
     }
     
-    /* Styling for responses */
-    .highlight {
-      background-color: rgba(65, 185, 131, 0.2);
-      border-left: 4px solid #41B983;
-      padding: 10px 15px;
-      margin: 15px 0;
-      border-radius: 4px;
+    /* Direct response styling */
+    .direct-answer {
+      font-size: 24px;
+      text-align: center;
+      color: #41B983;
+      font-weight: bold;
+      margin: 20px 0;
+      padding: 15px;
+      border-radius: 8px;
+      background: rgba(65, 185, 131, 0.1);
+      border: 1px solid rgba(65, 185, 131, 0.3);
+    }
+    
+    /* Special styling for MCQ responses */
+    .mcq-answer {
+      font-size: 32px;
+      text-align: center;
+      padding: 25px;
+      border-radius: 50%;
+      width: 80px;
+      height: 80px;
+      line-height: 80px;
+      margin: 30px auto;
+      background: rgba(65, 185, 131, 0.2);
+      border: 2px solid #41B983;
+      color: #41B983;
+      font-weight: bold;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
     
     strong {
@@ -342,15 +363,24 @@
       }, 3000);
     };
     
-    // Enhanced rendering for responses
+    // Enhanced rendering for direct responses
     const renderResponse = (result) => {
-      let html = marked.parse(result);
+      // Trim any extra whitespace
+      result = result.trim();
       
-      // Highlight important sections
-      html = html.replace(
-        /<p><strong>(Answer|Solution|Result|Summary):<\/strong>(.*?)<\/p>/gi, 
-        '<div class="highlight"><p><strong>$1:</strong>$2</p></div>'
-      );
+      // Check if it looks like an MCQ answer (just one letter/number with or without a period)
+      const mcqRegex = /^([A-D]|[1-4])(\.)?\s*$/i;
+      if (mcqRegex.test(result)) {
+        return `<div class="mcq-answer">${result.toUpperCase().replace(/\.$/, '')}</div>`;
+      }
+      
+      // If it's a very short response, make it direct
+      if (result.length < 100 && !result.includes('\n')) {
+        return `<div class="direct-answer">${result}</div>`;
+      }
+      
+      // Otherwise, use standard markdown parsing
+      let html = marked.parse(result);
       
       return html;
     };
