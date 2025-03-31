@@ -24,7 +24,7 @@ try {
   
   // Set default model if not specified
   if (!config.model) {
-    config.model = "gemini-1.5-pro";
+    config.model = "gemini-2.0-flash";
     console.log("Model not specified in config, using default:", config.model);
   }
 } catch (err) {
