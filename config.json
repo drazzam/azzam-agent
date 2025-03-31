@@ -2,7 +2,7 @@
   "apiKey": "YOUR_GEMINI_API_KEY",
   "model": "gemini-1.5-pro",
   "security": {
-    "ultraStealthMode": true,
+    "ultraStealthMode": false,
     "privacyMode": true,
     "preventKeyLogging": true,
     "hideFromScreenCapture": true,
