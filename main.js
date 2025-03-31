@@ -323,17 +323,32 @@ async function processScreenshots() {
     // Create a new chat session
     const chat = model.startChat();
     
-    // Prepare a DIRECT response prompt for any kind of questions or tasks
+    // Prepare a much more specific prompt for accurate question answering
     const prompt = `
-    Analyze this screenshot and respond with ONLY the direct answer - no introductions, explanations, or filler:
+    You are a specialized question-answering assistant. Analyze the question(s) in the screenshot and provide ONLY the direct answer. DO NOT repeat the question.
 
-    - For MCQs: Give ONLY the letter/option of the correct answer (e.g., "A" or "Option 2")
-    - For written questions: Read the question and understand what is about and what is asked from the context, then give ONLY the answer text itself, no explanation
-    - For essays/paragraphs: Read the question and understand what is about and what is asked from the context, then provide ONLY the answer text, no commentary
-    - For image analysis: State ONLY what is requested about the image
-    - For math problems: Show ONLY the final answer, no step-by-step working
+    Different question types require different responses:
 
-    Keep your response as concise as possible. Do not add any introductory text, confirmations, or explanations unless they are part of the required answer.
+    1. Multiple Choice Questions (MCQs):
+       - Respond with ONLY the letter/number of the correct option (e.g., "A" or "3")
+
+    2. Medical image analysis (X-rays, ECGs, MRIs, etc.):
+       - Provide a direct interpretation of the medical finding
+       - Example response: "ST elevation in leads V1-V4 indicating anterior STEMI"
+       - NOT: "This is an ECG" - this is too generic
+
+    3. Text-based clinical questions:
+       - Give the specific answer to the question
+       - Example Q: "What is the only condition where ACE inhibitors are given during pregnancy?"
+       - Example A: "Diabetic nephropathy with proteinuria" (NOT just repeating the question)
+
+    4. Essay or written answer questions:
+       - Provide the complete answer in paragraph form
+
+    5. Diagram or process questions:
+       - List the specific steps/components requested
+
+    IMPORTANT: Never simply identify the image type or repeat the question. Always provide the specific answer to the question being asked.
     `;
     
     // Create the content parts array with the initial text
