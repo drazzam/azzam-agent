@@ -219,6 +219,42 @@
     .logo span {
       color: #41B983;
     }
+    
+    /* Ultra-stealth mode styling */
+    .ultra-stealth-mode .control-buttons {
+      opacity: 0.7;
+    }
+    
+    .ultra-stealth-mode .instruction-banner {
+      background: rgba(0,0,0,0.7);
+    }
+    
+    body.ultra-stealth-mode {
+      pointer-events: none;
+    }
+    
+    body.ultra-stealth-mode .control-buttons,
+    body.ultra-stealth-mode #instruction-banner {
+      pointer-events: auto;
+    }
+    
+    /* Status indicator */
+    .status-badge {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      z-index: 10000;
+      opacity: 0.7;
+    }
+    
+    .status-badge.active {
+      background: rgba(65, 185, 131, 0.7);
+    }
   </style>
 </head>
 <body>
@@ -238,6 +274,8 @@
     <button class="control-button" id="save-btn" title="Save Screenshot">D</button>
     <button class="control-button" id="reset-btn" title="Reset">R</button>
   </div>
+  
+  <div id="stealth-status" class="status-badge">NORMAL</div>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
@@ -271,16 +309,25 @@
             button.classList.add('ultra-stealth-active');
             button.classList.remove('privacy-active');
           });
+          document.getElementById('stealth-status').textContent = 'ULTRA STEALTH';
+          document.getElementById('stealth-status').classList.add('active');
+          document.body.classList.add('ultra-stealth-mode');
         } else if (text.includes('Privacy Mode: ON')) {
           document.querySelectorAll('.control-button').forEach(button => {
             button.classList.add('privacy-active');
             button.classList.remove('ultra-stealth-active');
           });
-        } else {
+          document.getElementById('stealth-status').textContent = 'PRIVACY';
+          document.getElementById('stealth-status').classList.add('active');
+          document.body.classList.remove('ultra-stealth-mode');
+        } else if (text.includes('ULTRA STEALTH: OFF') || text.includes('Privacy Mode: OFF')) {
           document.querySelectorAll('.control-button').forEach(button => {
             button.classList.remove('privacy-active');
             button.classList.remove('ultra-stealth-active');
           });
+          document.getElementById('stealth-status').textContent = 'NORMAL';
+          document.getElementById('stealth-status').classList.remove('active');
+          document.body.classList.remove('ultra-stealth-mode');
         }
       }
     };
@@ -339,6 +386,64 @@
       
       'show-notification': (event, message) => {
         showNotification(message);
+      },
+      
+      // Handle stealth mode updates from main process
+      'ultra-stealth-enabled': () => {
+        document.querySelectorAll('.control-button').forEach(button => {
+          button.classList.add('ultra-stealth-active');
+          button.classList.remove('privacy-active');
+        });
+        
+        // Update status indicator
+        document.getElementById('stealth-status').textContent = 'ULTRA STEALTH';
+        document.getElementById('stealth-status').classList.add('active');
+        
+        // Adapt UI for ultra-stealth mode
+        document.body.classList.add('ultra-stealth-mode');
+      },
+      
+      'ultra-stealth-disabled': () => {
+        document.querySelectorAll('.control-button').forEach(button => {
+          button.classList.remove('ultra-stealth-active');
+        });
+        
+        // Update status indicator
+        document.getElementById('stealth-status').textContent = 'NORMAL';
+        document.getElementById('stealth-status').classList.remove('active');
+        
+        // Reset UI
+        document.body.classList.remove('ultra-stealth-mode');
+      },
+      
+      'stealth-status-update': (event, status) => {
+        console.log('Stealth status update:', status);
+        
+        // Update UI based on status
+        if (status.ultraStealthEnabled) {
+          document.querySelectorAll('.control-button').forEach(button => {
+            button.classList.add('ultra-stealth-active');
+          });
+          document.getElementById('stealth-status').textContent = 'ULTRA STEALTH';
+          document.getElementById('stealth-status').classList.add('active');
+          document.body.classList.add('ultra-stealth-mode');
+        } else if (status.privacyEnabled) {
+          document.querySelectorAll('.control-button').forEach(button => {
+            button.classList.add('privacy-active');
+            button.classList.remove('ultra-stealth-active');
+          });
+          document.getElementById('stealth-status').textContent = 'PRIVACY';
+          document.getElementById('stealth-status').classList.add('active');
+          document.body.classList.remove('ultra-stealth-mode');
+        } else {
+          document.querySelectorAll('.control-button').forEach(button => {
+            button.classList.remove('privacy-active');
+            button.classList.remove('ultra-stealth-active');
+          });
+          document.getElementById('stealth-status').textContent = 'NORMAL';
+          document.getElementById('stealth-status').classList.remove('active');
+          document.body.classList.remove('ultra-stealth-mode');
+        }
       }
     };
     
@@ -355,8 +460,26 @@
       ipcRenderer.send('toggle-privacy');
     });
     
+    // Add diagnostics and retry capability
+    let stealthToggleAttempts = 0;
     document.getElementById('toggle-ultra-stealth').addEventListener('click', () => {
-      ipcRenderer.send('toggle-ultra-stealth');
+      stealthToggleAttempts++;
+      
+      // Add a small delay to prevent UI lockup
+      setTimeout(() => {
+        ipcRenderer.send('toggle-ultra-stealth');
+        
+        // Request status update after toggle
+        setTimeout(() => {
+          ipcRenderer.send('ultra-stealth-status');
+        }, 500);
+      }, 100);
+      
+      // Notify user if multiple attempts are being made
+      if (stealthToggleAttempts > 2) {
+        showNotification("Multiple stealth toggle attempts detected. Try using keyboard shortcut Ctrl+Shift+U instead.");
+        stealthToggleAttempts = 0;
+      }
     });
     
     document.getElementById('capture-btn').addEventListener('click', () => {
@@ -412,16 +535,15 @@
       return originalAddEventListener.call(this, type, listener, options);
     };
     
-    window.addEventListener('unload', () => {
-      Object.keys(handlers).forEach(channel => {
-        ipcRenderer.removeAllListeners(channel);
-      });
-    });
-    
     // Enable mouse wheel events to scroll within response box
     document.getElementById('response-box').addEventListener('wheel', (e) => {
       e.stopPropagation();
     });
+    
+    // Request initial status on page load
+    setTimeout(() => {
+      ipcRenderer.send('ultra-stealth-status');
+    }, 1000);
     
     // Initialize with privacy mode message
     updateBanner("Azzam Agent | Ctrl+Shift+S: Screenshot | Ctrl+Shift+P: Privacy | Ctrl+Shift+U: Ultra Stealth | Ctrl+Shift+D: Save");
