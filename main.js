@@ -37,11 +37,12 @@ const genAI = new GoogleGenerativeAI(config.apiKey);
 
 let mainWindow;
 let overlayWindow;
+let ultraStealthWindow = null;
 let screenshots = [];
 let multiPageMode = false;
 let appIsActive = true; // Flag to track if app is actively intercepting input
 let privacyMode = true; // Flag for advanced privacy features
-let ultraStealthMode = true; // Flag for ultra stealth features
+let ultraStealthMode = false; // Flag for ultra stealth features (start disabled by default)
 let picturesDir = app.getPath('pictures');
 let appExePath = app.getPath('exe');
 
@@ -107,33 +108,108 @@ function hideInstruction() {
   }
 }
 
-// Advanced stealth technique to make the window invisible to recording
-function applyUltraStealth() {
-  if (!ultraStealthMode || !mainWindow) return;
+// Ultra-stealth mode functionality
+function toggleUltraStealth() {
+  ultraStealthMode = !ultraStealthMode;
   
+  if (ultraStealthMode) {
+    // Enable ultra stealth by creating a new overlay window
+    enableUltraStealth();
+    updateInstruction("ULTRA STEALTH: ON - Invisible to screen recording");
+  } else {
+    // Disable ultra stealth
+    disableUltraStealth();
+    updateInstruction("ULTRA STEALTH: OFF - Standard window behavior");
+  }
+}
+
+function enableUltraStealth() {
   try {
-    // For Windows: Use advanced window properties
-    if (process.platform === 'win32') {
-      // Set the window to be transparent and click-through
-      mainWindow.setOpacity(0.92);
-      mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
-      mainWindow.setSkipTaskbar(true);
-      
-      // Hide from Alt+Tab
-      mainWindow.setMenuBarVisibility(false);
-      
-      console.log("Applied Windows ultra-stealth mode");
+    // If there's already an ultra-stealth window, close it
+    if (ultraStealthWindow) {
+      ultraStealthWindow.close();
+      ultraStealthWindow = null;
     }
-    // For macOS, use specialized NSWindow properties
-    else if (process.platform === 'darwin') {
-      // The NSWindow needs special properties to avoid screen capture
-      mainWindow.setWindowButtonVisibility(false);
-      app.dock.hide();
-      
-      console.log("Applied macOS stealth mode");
-    }
+    
+    // Create a new minimally visible window
+    ultraStealthWindow = new BrowserWindow({
+      width: mainWindow.getBounds().width,
+      height: mainWindow.getBounds().height,
+      x: mainWindow.getBounds().x,
+      y: mainWindow.getBounds().y,
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: false
+      },
+      frame: false,
+      transparent: true,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      hasShadow: false,
+      opacity: 0.01,  // Almost invisible but still functional
+      type: 'toolbar'
+    });
+    
+    // Load a minimal HTML file
+    ultraStealthWindow.loadFile('stealth.html');
+    
+    // Make the main window less visible to recorders
+    mainWindow.setOpacity(0.92);
+    
+    // Sync positions
+    ultraStealthWindow.on('move', () => {
+      const bounds = ultraStealthWindow.getBounds();
+      mainWindow.setBounds(bounds);
+    });
+    
+    mainWindow.on('move', () => {
+      const bounds = mainWindow.getBounds();
+      if (ultraStealthWindow) {
+        ultraStealthWindow.setBounds(bounds);
+      }
+    });
+    
+    // Sync visibility
+    mainWindow.on('hide', () => {
+      if (ultraStealthWindow) {
+        ultraStealthWindow.hide();
+      }
+    });
+    
+    mainWindow.on('show', () => {
+      if (ultraStealthWindow) {
+        ultraStealthWindow.show();
+      }
+    });
+    
+    // Send update to renderer
+    mainWindow.webContents.send('ultra-stealth-enabled');
+    
+    console.log("Ultra-stealth mode enabled successfully");
   } catch (err) {
-    console.error("Failed to apply ultra stealth mode:", err);
+    console.error("Failed to enable ultra stealth mode:", err);
+    ultraStealthMode = false;
+    updateInstruction("Failed to enable ultra stealth mode");
+  }
+}
+
+function disableUltraStealth() {
+  try {
+    // Remove the ultra-stealth window if it exists
+    if (ultraStealthWindow) {
+      ultraStealthWindow.close();
+      ultraStealthWindow = null;
+    }
+    
+    // Restore main window opacity
+    mainWindow.setOpacity(1.0);
+    
+    // Send update to renderer
+    mainWindow.webContents.send('ultra-stealth-disabled');
+    
+    console.log("Ultra-stealth mode disabled successfully");
+  } catch (err) {
+    console.error("Failed to disable ultra stealth mode:", err);
   }
 }
 
@@ -194,9 +270,11 @@ function setWindowsInvisible(invisible) {
   if (invisible) {
     if (mainWindow) mainWindow.hide();
     if (overlayWindow) overlayWindow.hide();
+    if (ultraStealthWindow) ultraStealthWindow.hide();
   } else {
     if (mainWindow) mainWindow.show();
     if (overlayWindow) overlayWindow.show();
+    if (ultraStealthWindow) ultraStealthWindow.show();
   }
 }
 
@@ -314,11 +392,6 @@ function togglePrivacyMode() {
     mainWindow.setAlwaysOnTop(true, 'screen-saver', 1); // Make sure it stays on top
     mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     mainWindow.setOpacity(0.92); // Slightly more transparent to be less noticeable
-    
-    // Apply ultra stealth if possible
-    if (ultraStealthMode) {
-      applyUltraStealth();
-    }
   } else {
     updateInstruction("Privacy Mode: OFF - Standard mode active");
     // Revert to standard behavior
@@ -326,27 +399,6 @@ function togglePrivacyMode() {
     mainWindow.setAlwaysOnTop(true, 'pop-up-menu', 1);
     mainWindow.setOpacity(1.0);
   }
-}
-
-function toggleUltraStealth() {
-  ultraStealthMode = !ultraStealthMode;
-  if (ultraStealthMode) {
-    updateInstruction("ULTRA STEALTH: ON - Invisible to screen recording");
-    applyUltraStealth();
-  } else {
-    updateInstruction("ULTRA STEALTH: OFF - Standard window behavior");
-    // We would need to undo the stealth settings here, but that's complex
-    // Instead, we'll just restart the window
-    recreateWindow();
-  }
-}
-
-// Recreate the window to reset any native window modifications
-function recreateWindow() {
-  const bounds = mainWindow.getBounds();
-  mainWindow.close();
-  createPrivacyEnhancedWindow();
-  mainWindow.setBounds(bounds);
 }
 
 function createPrivacyEnhancedWindow() {
@@ -420,7 +472,7 @@ function createPrivacyEnhancedWindow() {
   if (ultraStealthMode) {
     // When the window is ready, apply the stealth modifications
     mainWindow.once('ready-to-show', () => {
-      applyUltraStealth();
+      enableUltraStealth();
     });
   }
   
@@ -541,6 +593,15 @@ function setupIpcHandlers() {
     }
   });
   ipcMain.on('reset-process', resetProcess);
+  
+  // Add diagnostic handler for ultra-stealth mode
+  ipcMain.on('ultra-stealth-status', () => {
+    mainWindow.webContents.send('stealth-status-update', {
+      ultraStealthEnabled: ultraStealthMode,
+      privacyEnabled: privacyMode,
+      appActive: appIsActive
+    });
+  });
 }
 
 // Replace regular window creation with our enhanced privacy version
