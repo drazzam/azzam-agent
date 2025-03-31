@@ -323,16 +323,17 @@ async function processScreenshots() {
     // Create a new chat session
     const chat = model.startChat();
     
-    // Prepare a general prompt for any kind of questions or tasks
+    // Prepare a DIRECT response prompt for any kind of questions or tasks
     const prompt = `
-    I can see a screenshot of content. Please:
-    1. Identify what type of content this is (question, document, diagram, etc.)
-    2. Analyze the content thoroughly
-    3. Provide the most helpful and accurate response
-    4. If it's a question, provide the correct answer with detailed explanation
-    5. If it's a task or request, provide guidance on how to accomplish it
-    
-    Be as detailed and helpful as possible in your response.
+    Analyze this screenshot and respond with ONLY the direct answer - no introductions, explanations, or filler:
+
+    - For MCQs: Give ONLY the letter/option of the correct answer (e.g., "A" or "Option 2")
+    - For written questions: Give ONLY the answer itself, no explanation
+    - For essays/paragraphs: Provide ONLY the completed text, no commentary
+    - For image analysis: State ONLY what is requested about the image
+    - For math problems: Show ONLY the final answer, no step-by-step working
+
+    Keep your response as concise as possible. Do not add any introductory text, confirmations, or explanations unless they are part of the required answer.
     `;
     
     // Create the content parts array with the initial text
