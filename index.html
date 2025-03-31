@@ -104,9 +104,9 @@
       border: 1px solid rgba(65, 185, 131, 0.3);
     }
     
-    /* Special styling for MCQ responses */
+    /* Special styling for different response types */
     .mcq-answer {
-      font-size: 32px;
+      font-size: 36px;
       text-align: center;
       padding: 25px;
       border-radius: 50%;
@@ -119,6 +119,30 @@
       color: #41B983;
       font-weight: bold;
       box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    
+    /* Medical findings styling */
+    .medical-answer {
+      font-size: 20px;
+      text-align: left;
+      color: #fff;
+      background: rgba(65, 125, 185, 0.2);
+      border-left: 4px solid rgba(65, 125, 185, 0.8);
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    
+    /* Text-based clinical answers */
+    .clinical-answer {
+      font-size: 20px;
+      text-align: left;
+      color: #fff;
+      background: rgba(185, 65, 150, 0.1);
+      border-left: 4px solid rgba(185, 65, 150, 0.7);
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
     }
     
     strong {
@@ -363,7 +387,7 @@
       }, 3000);
     };
     
-    // Enhanced rendering for direct responses
+    // Enhanced rendering for different response types
     const renderResponse = (result) => {
       // Trim any extra whitespace
       result = result.trim();
@@ -372,6 +396,18 @@
       const mcqRegex = /^([A-D]|[1-4])(\.)?\s*$/i;
       if (mcqRegex.test(result)) {
         return `<div class="mcq-answer">${result.toUpperCase().replace(/\.$/, '')}</div>`;
+      }
+      
+      // Check if it looks like a medical finding (ECG, EKG, etc.)
+      const medicalRegex = /(ECG|EKG|ST|elevation|depression|STEMI|segment|QRS|inversion|wave|interval|rhythm|bradycardia|tachycardia|fibrillation|flutter|axis|block|normal sinus rhythm)/i;
+      if (medicalRegex.test(result) && result.length < 500) {
+        return `<div class="medical-answer">${result}</div>`;
+      }
+      
+      // Check if it's a clinical answer (medical terminology)
+      const clinicalRegex = /(disease|syndrome|disorder|medication|treatment|diagnosis|prognosis|therapy|inhibitors?|nephropathy|hypertension|cardiac|vascular|diabetes|renal)/i;
+      if (clinicalRegex.test(result) && result.length < 500) {
+        return `<div class="clinical-answer">${result}</div>`;
       }
       
       // If it's a very short response, make it direct
