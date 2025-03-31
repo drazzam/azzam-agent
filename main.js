@@ -328,8 +328,8 @@ async function processScreenshots() {
     Analyze this screenshot and respond with ONLY the direct answer - no introductions, explanations, or filler:
 
     - For MCQs: Give ONLY the letter/option of the correct answer (e.g., "A" or "Option 2")
-    - For written questions: Give ONLY the answer itself, no explanation
-    - For essays/paragraphs: Provide ONLY the completed text, no commentary
+    - For written questions: Read the question and understand what is about and what is asked from the context, then give ONLY the answer text itself, no explanation
+    - For essays/paragraphs: Read the question and understand what is about and what is asked from the context, then provide ONLY the answer text, no commentary
     - For image analysis: State ONLY what is requested about the image
     - For math problems: Show ONLY the final answer, no step-by-step working
 
